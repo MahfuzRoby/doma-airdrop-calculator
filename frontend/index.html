@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Domalytics — Airdrop Calculator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg: #0a0e14;
+    --bg-panel: #10151f;
+    --bg-panel-2: #141b28;
+    --line: #202838;
+    --ink: #e7ecf5;
+    --ink-dim: #8b96ab;
+    --ink-faint: #56607a;
+    --accent: #5ee6c8;
+    --accent-dim: #1f4a44;
+    --warn: #f2a154;
+    --up: #5ee6c8;
+    --down: #f2607a;
+    --radius: 10px;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(94,230,200,0.08), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 0%, rgba(242,161,84,0.06), transparent 55%);
+  }
+
+  .mono{ font-family:'JetBrains Mono', monospace; }
+
+  header{
+    border-bottom: 1px solid var(--line);
+    padding: 22px clamp(16px,4vw,48px);
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:10px; }
+  .brand .mark{
+    font-family:'JetBrains Mono', monospace; font-weight:700; font-size:13px;
+    color: var(--bg); background: var(--accent); padding:3px 7px; border-radius:4px;
+    letter-spacing: 0.04em;
+  }
+  .brand h1{ font-size:19px; margin:0; font-weight:600; letter-spacing:-0.01em; }
+  .brand small{ color:var(--ink-faint); font-size:12px; }
+
+  .status-pill{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; color:var(--ink-dim);
+    border:1px solid var(--line); border-radius:100px; padding:6px 12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--ink-faint); flex-shrink:0; }
+  .dot.ok{ background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .dot.err{ background: var(--down); box-shadow: 0 0 8px var(--down); }
+
+  main{ max-width: 1180px; margin: 0 auto; padding: 32px clamp(16px,4vw,48px) 80px; }
+
+  .stat-row{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:14px; margin-bottom: 28px; }
+  .stat-card{
+    background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .stat-card .label{ font-size:11.5px; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-faint); margin-bottom:8px; }
+  .stat-card .value{ font-family:'JetBrains Mono', monospace; font-size:24px; font-weight:600; color:var(--ink); }
+  .stat-card .value.accent{ color:var(--accent); }
+  .stat-card .sub{ font-size:12px; color:var(--ink-dim); margin-top:6px; }
+
+  .panel{
+    background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 24px clamp(16px,3vw,28px); margin-bottom: 22px;
+  }
+  .panel h2{ font-size:15px; margin:0 0 4px; font-weight:600; }
+  .panel .desc{ font-size:12.5px; color:var(--ink-faint); margin:0 0 20px; }
+
+  .calc-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:24px; }
+  @media (max-width: 720px){ .calc-grid{ grid-template-columns: 1fr; } }
+
+  .field{ margin-bottom: 18px; }
+  .field label{ display:flex; justify-content:space-between; font-size:12.5px; color:var(--ink-dim); margin-bottom:8px; }
+  .field label .val{ color:var(--accent); font-family:'JetBrains Mono', monospace; font-weight:600; }
+  input[type=range]{
+    width:100%; -webkit-appearance:none; height:4px; border-radius:4px; background:var(--line); outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%; background:var(--accent);
+    cursor:pointer; box-shadow: 0 0 0 4px rgba(94,230,200,0.15);
+  }
+  input[type=number]{
+    background: var(--bg-panel-2); border:1px solid var(--line); color:var(--ink);
+    border-radius:6px; padding:8px 10px; font-family:'JetBrains Mono', monospace; font-size:13px; width:100%;
+  }
+
+  .result-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:12px; }
+  .result-item{
+    background: var(--bg-panel-2); border:1px solid var(--line); border-radius:8px; padding:14px 16px;
+  }
+  .result-item .k{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+  .result-item .v{ font-family:'JetBrains Mono', monospace; font-size:16px; font-weight:600; color:var(--accent); }
+
+  .search-row{ display:flex; gap:10px; margin-bottom: 18px; }
+  .search-row input{
+    flex:1; background: var(--bg-panel-2); border:1px solid var(--line); color:var(--ink);
+    border-radius:6px; padding:11px 14px; font-family:'JetBrains Mono', monospace; font-size:13px;
+  }
+  .search-row input:focus{ outline:none; border-color:var(--accent); }
+  button{
+    background: var(--accent); color:#06110e; border:none; border-radius:6px; padding:11px 18px;
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:13.5px; cursor:pointer;
+  }
+  button:hover{ filter:brightness(1.08); }
+  button.ghost{
+    background: transparent; border:1px solid var(--line); color: var(--ink-dim);
+  }
+
+  #walletResult{ display:none; }
+  #walletResult.show{ display:block; }
+  .wallet-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;}
+  .wallet-header .addr{ font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--ink); }
+  .level-badge{
+    font-family:'JetBrains Mono', monospace; font-size:11px; padding:4px 9px; border-radius:5px;
+    background: var(--accent-dim); color: var(--accent); letter-spacing:0.04em;
+  }
+  .not-found{ color: var(--down); font-size:13px; font-family:'JetBrains Mono', monospace; }
+
+  table{ width:100%; border-collapse: collapse; font-size:13px; }
+  th{
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint);
+    padding: 10px 12px; border-bottom:1px solid var(--line); font-weight:500;
+  }
+  td{ padding: 11px 12px; border-bottom:1px solid var(--line); font-family:'JetBrains Mono', monospace; color:var(--ink-dim); }
+  tr:hover td{ background: rgba(255,255,255,0.015); color: var(--ink); }
+  td.rank{ color: var(--accent); font-weight:600; }
+  .table-wrap{ overflow-x:auto; }
+
+  footer{ text-align:center; color:var(--ink-faint); font-size:11.5px; padding: 20px; border-top:1px solid var(--line); }
+  footer a{ color: var(--ink-dim); }
+
+  .loading{ color: var(--ink-faint); font-family:'JetBrains Mono', monospace; font-size:12.5px; padding: 20px 0; }
+</style>
+</head>
+<body>
+
+<!--
+  Set your deployed backend URL here before deploying to Vercel, e.g.:
+  <script>window.DOMA_API_BASE = "https://doma-airdrop-backend.up.railway.app";</script>
+-->
+<script>window.DOMA_API_BASE = "http://localhost:8000";</script>
+
+<header>
+  <div class="brand">
+    <span class="mark">DL</span>
+    <div>
+      <h1>Domalytics</h1>
+      <small>Unofficial airdrop points calculator for Doma</small>
+    </div>
+  </div>
+  <div class="status-pill" id="statusPill">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">connecting…</span>
+  </div>
+</header>
+
+<main>
+
+  <div class="stat-row" id="statRow">
+    <div class="stat-card"><div class="label">Total wallets tracked</div><div class="value" id="statWallets">—</div></div>
+    <div class="stat-card"><div class="label">Total season points</div><div class="value accent" id="statSeasonPoints">—</div></div>
+    <div class="stat-card"><div class="label">Total points this week</div><div class="value" id="statWeeklyPoints">—</div></div>
+    <div class="stat-card"><div class="label">Last synced</div><div class="value" id="statUpdated" style="font-size:14px;">—</div><div class="sub">Auto-refreshes hourly</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Airdrop calculator</h2>
+    <p class="desc">Assumes a fixed 1,000,000,000 token total supply. Adjust the airdrop allocation and assumed FDV — these are not announced by Doma, so treat this purely as a "what if" estimator.</p>
+
+    <div class="calc-grid">
+      <div>
+        <div class="field">
+          <label>Airdrop allocation <span class="val" id="airdropPctVal">5%</span> of supply</label>
+          <input type="range" id="airdropPct" min="0.5" max="30" step="0.5" value="5">
+        </div>
+        <div class="field">
+          <label>Assumed FDV <span class="val" id="fdvVal">$100,000,000</span></label>
+          <input type="range" id="fdvSlider" min="10000000" max="2000000000" step="10000000" value="100000000">
+        </div>
+        <div class="field">
+          <label style="margin-bottom:6px;">Custom FDV (USD)</label>
+          <input type="number" id="fdvCustom" value="100000000" step="1000000">
+        </div>
+      </div>
+
+      <div>
+        <div class="result-grid" id="calcResults">
+          <div class="result-item"><div class="k">Token price</div><div class="v" id="rTokenPrice">—</div></div>
+          <div class="result-item"><div class="k">Airdrop pool (tokens)</div><div class="v" id="rPoolTokens">—</div></div>
+          <div class="result-item"><div class="k">Airdrop pool (USD)</div><div class="v" id="rPoolUsd">—</div></div>
+          <div class="result-item"><div class="k">Value per point</div><div class="v" id="rValuePerPoint">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Wallet lookup</h2>
+    <p class="desc">Search a wallet address to see its rank, points, and estimated airdrop allocation under the assumptions above.</p>
+    <div class="search-row">
+      <input type="text" id="walletInput" placeholder="0x..." class="mono" />
+      <button id="searchBtn">Search</button>
+    </div>
+    <div id="walletMsg"></div>
+    <div id="walletResult">
+      <div class="wallet-header">
+        <span class="addr mono" id="wAddr">—</span>
+        <span class="level-badge" id="wLevel">—</span>
+      </div>
+      <div class="result-grid">
+        <div class="result-item"><div class="k">Rank</div><div class="v" id="wRank">—</div></div>
+        <div class="result-item"><div class="k">Season points</div><div class="v" id="wSeasonPoints">—</div></div>
+        <div class="result-item"><div class="k">Weekly points</div><div class="v" id="wWeeklyPoints">—</div></div>
+        <div class="result-item"><div class="k">Share of total points</div><div class="v" id="wShare">—</div></div>
+        <div class="result-item"><div class="k">Est. tokens</div><div class="v" id="wTokens">—</div></div>
+        <div class="result-item"><div class="k">Est. USD value</div><div class="v" id="wUsd">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Leaderboard</h2>
+    <p class="desc">Top wallets by season points.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Rank</th><th>Wallet</th><th>Level</th><th>Season pts</th><th>Weekly pts</th></tr>
+        </thead>
+        <tbody id="leaderboardBody">
+          <tr><td colspan="5" class="loading">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Unofficial community tool. Points and FDV assumptions are user-adjustable estimates, not guarantees from Doma. ·
+  Backend: <span class="mono">http://localhost:8000</span>
+</footer>
+
+<script>
+// Backend URL: edit this to your deployed backend once it's live
+// (e.g. "https://doma-airdrop-backend.up.railway.app").
+// Falls back to localhost for local testing.
+const API = window.DOMA_API_BASE || "http://localhost:8000";
+
+function fmtNum(n, digits=0){
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return Number(n).toLocaleString(undefined, {maximumFractionDigits: digits});
+}
+function fmtUsd(n){
+  if (n === null || n === undefined || isNaN(n)) return "—";
+  return "$" + Number(n).toLocaleString(undefined, {maximumFractionDigits: 2});
+}
+function timeAgo(iso){
+  if (!iso) return "—";
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.round(diffMs/60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return mins + "m ago";
+  const hrs = Math.round(mins/60);
+  return hrs + "h ago";
+}
+
+async function loadStatus(){
+  try {
+    const res = await fetch(`${API}/api/status`);
+    const data = await res.json();
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (data.status === 'ok'){
+      dot.className = 'dot ok';
+      text.textContent = `synced ${timeAgo(data.synced_at)} · ${fmtNum(data.total_wallets)} wallets`;
+    } else if (data.status === 'error'){
+      dot.className = 'dot err';
+      text.textContent = 'sync error';
+    } else {
+      dot.className = 'dot';
+      text.textContent = 'no data yet';
+    }
+  } catch(e){
+    document.getElementById('statusDot').className = 'dot err';
+    document.getElementById('statusText').textContent = 'backend offline';
+  }
+}
+
+async function loadStats(){
+  try {
+    const res = await fetch(`${API}/api/stats`);
+    const data = await res.json();
+    document.getElementById('statWallets').textContent = fmtNum(data.wallet_count);
+    document.getElementById('statSeasonPoints').textContent = fmtNum(data.total_season_points);
+    document.getElementById('statWeeklyPoints').textContent = fmtNum(data.total_weekly_points);
+    document.getElementById('statUpdated').textContent = timeAgo(data.last_updated);
+  } catch(e){ /* backend likely offline, status pill already shows this */ }
+}
+
+async function loadCalculator(){
+  const pct = document.getElementById('airdropPct').value;
+  const fdv = document.getElementById('fdvCustom').value;
+  try {
+    const res = await fetch(`${API}/api/calculator?airdrop_percent=${pct}&fdv=${fdv}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    document.getElementById('rTokenPrice').textContent = fmtUsd(data.token_price_usd);
+    document.getElementById('rPoolTokens').textContent = fmtNum(data.airdrop_pool_tokens);
+    document.getElementById('rPoolUsd').textContent = fmtUsd(data.airdrop_pool_usd);
+    document.getElementById('rValuePerPoint').textContent = "$" + Number(data.value_per_point_usd).toFixed(6);
+  } catch(e){}
+}
+
+async function loadLeaderboard(){
+  try {
+    const res = await fetch(`${API}/api/leaderboard?limit=50&sort_by=season_points`);
+    const data = await res.json();
+    const body = document.getElementById('leaderboardBody');
+    if (!data.length){ body.innerHTML = '<tr><td colspan="5" class="loading">No data yet.</td></tr>'; return; }
+    body.innerHTML = data.map(w => `
+      <tr>
+        <td class="rank">#${w.rank}</td>
+        <td>${w.wallet_address.slice(0,6)}...${w.wallet_address.slice(-4)}</td>
+        <td>${w.level || '—'}</td>
+        <td>${fmtNum(w.season_points)}</td>
+        <td>${fmtNum(w.weekly_points)}</td>
+      </tr>
+    `).join('');
+  } catch(e){
+    document.getElementById('leaderboardBody').innerHTML = '<tr><td colspan="5" class="loading">Could not reach backend.</td></tr>';
+  }
+}
+
+async function searchWallet(){
+  const addr = document.getElementById('walletInput').value.trim();
+  const msg = document.getElementById('walletMsg');
+  const resultBox = document.getElementById('walletResult');
+  msg.textContent = '';
+  resultBox.classList.remove('show');
+  if (!addr) return;
+
+  const pct = document.getElementById('airdropPct').value;
+  const fdv = document.getElementById('fdvCustom').value;
+
+  try {
+    const res = await fetch(`${API}/api/wallet/${addr}?airdrop_percent=${pct}&fdv=${fdv}`);
+    if (res.status === 404){
+      msg.innerHTML = '<div class="not-found">Wallet not found on the leaderboard.</div>';
+      return;
+    }
+    const w = await res.json();
+    document.getElementById('wAddr').textContent = w.wallet_address;
+    document.getElementById('wLevel').textContent = w.level || 'UNRANKED';
+    document.getElementById('wRank').textContent = '#' + fmtNum(w.rank);
+    document.getElementById('wSeasonPoints').textContent = fmtNum(w.season_points);
+    document.getElementById('wWeeklyPoints').textContent = fmtNum(w.weekly_points);
+    document.getElementById('wShare').textContent = Number(w.share_of_total_points_pct).toFixed(4) + '%';
+    document.getElementById('wTokens').textContent = fmtNum(w.estimated_tokens);
+    document.getElementById('wUsd').textContent = fmtUsd(w.estimated_usd_value);
+    resultBox.classList.add('show');
+  } catch(e){
+    msg.innerHTML = '<div class="not-found">Could not reach backend.</div>';
+  }
+}
+
+// wire up controls
+const airdropPct = document.getElementById('airdropPct');
+const fdvSlider = document.getElementById('fdvSlider');
+const fdvCustom = document.getElementById('fdvCustom');
+
+airdropPct.addEventListener('input', () => {
+  document.getElementById('airdropPctVal').textContent = airdropPct.value + '%';
+  loadCalculator();
+});
+fdvSlider.addEventListener('input', () => {
+  fdvCustom.value = fdvSlider.value;
+  document.getElementById('fdvVal').textContent = fmtUsd(fdvSlider.value);
+  loadCalculator();
+});
+fdvCustom.addEventListener('input', () => {
+  fdvSlider.value = fdvCustom.value;
+  document.getElementById('fdvVal').textContent = fmtUsd(fdvCustom.value);
+  loadCalculator();
+});
+document.getElementById('searchBtn').addEventListener('click', searchWallet);
+document.getElementById('walletInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchWallet(); });
+
+// initial load + polling
+loadStatus(); loadStats(); loadCalculator(); loadLeaderboard();
+setInterval(loadStatus, 30000);
+setInterval(loadStats, 30000);
+</script>
+
+</body>
+</html>
